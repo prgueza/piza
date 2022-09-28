@@ -1,0 +1,54 @@
+version: "3.8"
+services:
+  db:
+    container_name: piza_db
+    image: postgres:14.1-alpine
+    build:
+      context: ./database
+      dockerfile: ../dockerfiles/database.dockerfile
+    restart: always
+    command:
+      - "postgres"
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    ports:
+      - "5432:5432"
+    volumes:
+      - db:/var/lib/postgresql/data
+  api:
+    container_name: piza_api
+    image: postgrest/postgrest:v10.0.0
+    ports:
+      - "3000:3000"
+    restart: always
+    environment:
+      PGRST_DB_URI: "postgres://${PGRST_USER}:${PGRST_PASSWORD}@db:5432/${PGRST_DB}"
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:3000
+      PGRST_OPENAPI_MODE: ignore-privileges
+      PGRST_DB_SCHEMAS: "${PGRST_DB_SCHEMAS}"
+      PGRST_DB_ANON_ROLE: "${PGRST_DB_ANON_ROLE}"
+    depends_on:
+      - db
+  backend:
+    container_name: piza_backend
+    image: piza/backend
+    build:
+      context: ./backend
+      dockerfile: ../dockerfiles/backend.dockerfile
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+  frontend:
+    container_name: piza_frontend
+    image: piza/frontend
+    ports:
+      - "8080:8080"
+    build:
+      context: ./frontend
+      dockerfile: ../dockerfiles/frontend.dockerfile
+volumes:
+  db:
+    driver: local
